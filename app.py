@@ -9,7 +9,7 @@ connection = psycopg2.connect(url)
 app = Flask(__name__)
 CREATE_TABLE = """CREATE TABLE IF NOT EXISTS rooms (
                 id SERIAL PRIMARY_KEY,
-                name TEXT
+                name TEXT);
             """
 
 
@@ -29,9 +29,11 @@ CREATE_TABLE = """CREATE TABLE IF NOT EXISTS rooms (
 }
 """
 
-# POST /api/room
+# POST /api/room {'name':room_name}
 @app.route('/api/room',methods=['POST'])
 def create_room():
     data = request.get_json()
-    
-    return {"id": 2, "message": "Room {name} created."}
+    name = data['name']
+    with connection:
+        connection.execute(CREATE_TABLE)
+    return {"id": 2, "message": f"Room {name} created."}
