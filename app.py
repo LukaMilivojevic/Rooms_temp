@@ -37,3 +37,11 @@ def create_room():
     with connection:
         connection.execute(CREATE_TABLE)
     return {"id": 2, "message": f"Room {name} created."}
+  
+
+@app.route("/")
+def home_view():
+        return "<h1>Welcome to rooms temp control</h1>"
+  
+if __name__ == "__main__":
+        app.run()
