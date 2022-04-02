@@ -29,19 +29,21 @@ CREATE_TABLE = """CREATE TABLE IF NOT EXISTS rooms (
 }
 """
 
+@app.route("/")
+def home_view():
+        return "<h1>Welcome to rooms temp control</h1>"
+  
+
 # POST /api/room {'name':room_name}
 @app.route('/api/room',methods=['POST'])
 def create_room():
     data = request.get_json()
     name = data['name']
     with connection:
-        connection.execute(CREATE_TABLE)
+        cursor = connection.cursor()
+        cursor.execute(CREATE_TABLE)
     return {"id": 2, "message": f"Room {name} created."}
   
 
-@app.route("/")
-def home_view():
-        return "<h1>Welcome to rooms temp control</h1>"
-  
 if __name__ == "__main__":
         app.run()
