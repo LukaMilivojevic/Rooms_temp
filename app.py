@@ -8,7 +8,7 @@ url = os.environ.get('DATABASE_URL')
 connection = psycopg2.connect(url)
 app = Flask(__name__)
 CREATE_TABLE = """CREATE TABLE IF NOT EXISTS rooms (
-                id SERIAL PRIMARY_KEY,
+                id PRIMARY_KEY,
                 name TEXT);
             """
 
