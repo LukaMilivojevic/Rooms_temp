@@ -60,7 +60,7 @@ def add_temp():
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(CREATE_TEMPS_TABLE)
-            cursor.execute(INSERT_ROOM_RETURN_ID, (room_id, temperature))
+            cursor.execute(INSERT_TEMP, (room_id, temperature))
     return {"message": "Temperature added."}
 
 	
