@@ -10,7 +10,8 @@ app = Flask(__name__)
 
 
 CREATE_ROOMS_TABLE = "CREATE TABLE IF NOT EXISTS rooms (id SERIAL PRIMARY KEY, name TEXT);"
-CREATE_TEMPS_TABLE = "CREATE TABLE IF NOT EXISTS temperatures (room_id INTEGER, temperature REAL, FOREIGN KEY(room_id) REFERENCES rooms(id));"
+CREATE_TEMPS_TABLE = """"CREATE TABLE IF NOT EXISTS temperatures (room_id INTEGER, temperature REAL, 
+                         date CURRENT_DATE, time CURRENT_TIME, FOREIGN KEY(room_id) REFERENCES rooms(id)) ON DELETE CASCADE;"""
 
 INSERT_ROOM_RETURN_ID = "INSERT INTO rooms (name) VALUES (%s) RETURNING id;"
 INSERT_TEMP = "INSERT INTO temperatures (room_id, temperature) VALUES (%s, %s);"
@@ -62,6 +63,9 @@ def add_temp():
             cursor.execute(CREATE_TEMPS_TABLE)
             cursor.execute(INSERT_TEMP, (room_id, temperature))
     return {"message": "Temperature added."}
+
+
+
 
 	
 
