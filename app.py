@@ -41,9 +41,15 @@ def create_room():
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(CREATE_TABLE)
-            cursor.execute(INSERT_ROOM_RETURN_ID, (name,))
-            room_id = cursor.fetchone()[0]
-    return {"id": room_id, "message": f"Room {name} created."}
+            try:
+                cursor.execute(INSERT_ROOM_RETURN_ID, (name,))
+                room_id = cursor.fetchone()[0]
+                return {"id": room_id, "message": f"Room {name} created."}
+            except:
+                return {"message": f'Room named:"{name}" already exists'}
+
+
+#@app.route('/api/room',methods=['POST'])
 	
 
 if __name__ == "__main__":
