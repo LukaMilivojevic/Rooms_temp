@@ -53,7 +53,7 @@ def create_room():
     return {"id": room_id, "message": f"Room {name} created."}
             
 
-"""
+
 #{"temperature": 15.9, "room": 2}
 @app.route('/api/temperature',methods=['POST'])
 def add_temp():
@@ -66,7 +66,7 @@ def add_temp():
             cursor.execute(CREATE_TEMPS_TABLE)
             cursor.execute(INSERT_TEMP, (room_id, temperature, date))
     return {"message": "Temperature added."}
-"""
+
 
 
 
