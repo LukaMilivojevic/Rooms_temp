@@ -3,7 +3,7 @@ from datetime import datetime,timezone
 #from psycopg2 import connect
 import psycopg2
 import pytz
-
+import time
 import os
 
 url = os.environ.get('DATABASE_URL')
@@ -13,11 +13,18 @@ app = Flask(__name__)
 
 CREATE_ROOMS_TABLE = "CREATE TABLE IF NOT EXISTS rooms (id SERIAL PRIMARY KEY, name TEXT);"
 CREATE_TEMPS_TABLE = """CREATE TABLE IF NOT EXISTS temperatures (room_id INTEGER, temperature REAL, 
-                         date TIMESTAMP, FOREIGN KEY(room_id) REFERENCES rooms(id) ON DELETE CASCADE);"""
+                        date TIMESTAMP, FOREIGN KEY(room_id) REFERENCES rooms(id) ON DELETE CASCADE);"""
 
 INSERT_ROOM_RETURN_ID = "INSERT INTO rooms (name) VALUES (%s) RETURNING id;"
 INSERT_TEMP = "INSERT INTO temperatures (room_id, temperature, date) VALUES (%s, %s, %s);"
 
+ROOM_AVG = """SELECT rooms.name, COUNT(temperatures.date), AVG(temperatures.temperature)
+                       FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id WHERE rooms.id = (%s) GROUP BY DATE(temperatures.date), rooms.id;"""
+                       
+ROOM_ALL_TIME_AVG = """SELECT name, COUNT(date) as number_of_days, AVG(average) as average_temp FROM 
+                       (SELECT DATE(temperatures.date), rooms.name, COUNT(temperatures.date), AVG(temperatures.temperature) as average
+                       FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id WHERE rooms.id = (%s) 
+                       GROUP BY DATE(temperatures.date), rooms.name) as days GROUP BY name;"""
 
 """
 {
@@ -55,12 +62,16 @@ def create_room():
 
 
 #{"temperature": 15.9, "room": 2}
+#OPTIONAL: {"temperature": 15.9, "room": 2, "date": "%d-%m-%Y %H:%M:%S"}
 @app.route('/api/temperature',methods=['POST'])
 def add_temp():
     data = request.get_json()
     temperature = data['temperature']
     room_id = data['room']
-    date = datetime.now(timezone.utc)
+    try:
+        date = datetime.strptime(data['date'],"%d-%m-%Y %H:%M:%S")
+    except:
+        date = datetime.now(timezone.utc)
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(CREATE_TEMPS_TABLE)
@@ -69,8 +80,27 @@ def add_temp():
 
 
 
+#GET /api/room/2
+@app.route('/api/room/<string:id>')
+def get_room(id):
+    room_id = int(id)
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute(ROOM_ALL_TIME_AVG, (room_id,))
+            row = cursor.fetchone()
+    return {"name": row[0], "average": round(row[2], 2), "days": row[1]}
 
-	
+
+
+@app.route('/api/room/<string:id>?term=week')
+def get_room(id):
+    room_id = int(id)
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute(ROOM_ALL_TIME_AVG, (room_id,))
+            row = cursor.fetchone()
+    return {"name": row[0], "average": round(row[2], 2), "days": row[1]}
+    
 
 if __name__ == "__main__":
   	app.run()
