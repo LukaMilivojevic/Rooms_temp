@@ -7,38 +7,24 @@ CREATE_ROOMS_TABLE = "CREATE TABLE IF NOT EXISTS rooms (id SERIAL PRIMARY KEY, n
 CREATE_TEMPS_TABLE = """CREATE TABLE IF NOT EXISTS temperatures (room_id INTEGER, temperature REAL, 
                         date TIMESTAMP, FOREIGN KEY(room_id) REFERENCES rooms(id) ON DELETE CASCADE);"""
 
+
 INSERT_ROOM_RETURN_ID = "INSERT INTO rooms (name) VALUES (%s) RETURNING id;"
 INSERT_TEMP = "INSERT INTO temperatures (room_id, temperature, date) VALUES (%s, %s, %s);"
 
-ROOM_AVG = """SELECT rooms.name, COUNT(temperatures.date), AVG(temperatures.temperature)
-              FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id WHERE rooms.id = (%s) GROUP BY DATE(temperatures.date), rooms.id;"""
-                       
-ROOM_ALL_TIME_AVG = """SELECT name, COUNT(date) as number_of_days, AVG(average) as average_temp FROM 
-                       (SELECT DATE(temperatures.date), rooms.name, COUNT(temperatures.date), AVG(temperatures.temperature) as average
-                       FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id WHERE rooms.id = (%s) 
-                       GROUP BY DATE(temperatures.date), rooms.name) as days GROUP BY name;"""
-                       
-ROOM_WEEK = """SELECT name, average, date FROM
-                (SELECT DATE(temperatures.date) as date, rooms.name, COUNT(temperatures.date), AVG(temperatures.temperature) as average
-                FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id 
-                GROUP BY DATE(temperatures.date), rooms.name, rooms.id
-                HAVING rooms.id = (%s) AND DATE(temperatures.date) > (SELECT MAX(DATE(date))-7 FROM temperatures)) as days;
-            """
-            
-            
-ROOM_MONTH = """SELECT name, average, date FROM
-                (SELECT DATE(temperatures.date) as date, rooms.name, COUNT(temperatures.date), AVG(temperatures.temperature) as average
-                FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id 
-                GROUP BY DATE(temperatures.date), rooms.name, rooms.id
-                HAVING rooms.id = (%s) AND DATE(temperatures.date) > (SELECT MAX(DATE(date))-30 FROM temperatures)) as days;
-            """
-            
 
-ROOM_TERM = """SELECT name, average, date FROM
-                (SELECT DATE(temperatures.date) as date, rooms.name, COUNT(temperatures.date), AVG(temperatures.temperature) as average
+ROOM_AVG = """SELECT DATE(temperatures.date), rooms.name, AVG(temperatures.temperature) as average
+                       FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id WHERE rooms.id = (%s) 
+                       GROUP BY DATE(temperatures.date), rooms.name"""
+ROOM_ALL_TIME_AVG = f"""SELECT name, COUNT(date) as number_of_days, AVG(average) as average_temp FROM 
+                       ({ROOM_AVG}) as days GROUP BY name;"""
+
+
+MAX_DATE = """SELECT MAX(DATE(date))-(%s) FROM temperatures"""
+ROOM_TERM = f"""SELECT name, average, date FROM
+                (SELECT DATE(temperatures.date) as date, rooms.name, AVG(temperatures.temperature) as average
                 FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id 
                 GROUP BY DATE(temperatures.date), rooms.name, rooms.id
-                HAVING rooms.id = (%s) AND DATE(temperatures.date) > (SELECT MAX(DATE(date))-(%s) FROM temperatures)) as days;
+                HAVING rooms.id = (%s) AND DATE(temperatures.date) > ({MAX_DATE})) as days;
             """ 
 
 
@@ -51,8 +37,7 @@ app = Flask(__name__)
 def home_view():
 	return "<h1>Welcome to rooms temp control</h1>"
 	
-
-# POST /api/room {'name':room_name}			
+		
 @app.route('/api/room',methods=['POST'])
 def create_room():
     data = request.get_json()
@@ -65,9 +50,6 @@ def create_room():
     return {"id": room_id, "message": f"Room {name} created."}
             
 
-
-#{"temperature": 15.9, "room": 2}
-#OPTIONAL: {"temperature": 15.9, "room": 2, "date": "%m-%d-%Y %H:%M:%S"}
 @app.route('/api/temperature',methods=['POST'])
 def add_temp():
     data = request.get_json()
