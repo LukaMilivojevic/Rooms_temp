@@ -1,5 +1,5 @@
 from flask import Flask,request
-from datetime import datetime,timezone
+from datetime import date, datetime,timezone
 import psycopg2
 import os
 
@@ -92,8 +92,9 @@ def get_room_term(id, term):
         with connection.cursor() as cursor:
             cursor.execute(ROOM_TERM, (room_id,terms[term]))
             row = cursor.fetchall()
-    temperatures = [{"date": element[2], "temperature": round(element[1], 2)} for element in row]
-    return {"name": row[0][0], "temperatures": temperatures}
+    dates_temperatures = [{"date": element[2], "temperature": round(element[1], 2)} for element in row]
+    average = sum([elem["temperature"] for elem in dates_temperatures])/len(dates_temperatures)
+    return {"name": row[0][0], "temperatures": dates_temperatures, "average": round(average,2)}
     
 
 @app.route('/api/average')
