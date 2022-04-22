@@ -1,5 +1,5 @@
 from flask import Flask,request
-from datetime import date, datetime,timezone
+from datetime import datetime,timezone
 import psycopg2
 import os
 
@@ -25,10 +25,8 @@ WHERE temperatures.room_id = (%s)
 GROUP BY reading_date
 HAVING DATE(temperatures.date) > (SELECT MAX(DATE(temperatures.date))-(%s) FROM temperatures);"""
 
-DATE_AVG = """SELECT DATE(temperatures.date), AVG(temperatures.temperature) as average
-              FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id
-              GROUP BY DATE(temperatures.date)"""
-GLOBAL_AVG = f"""SELECT AVG(average), COUNT(date)  FROM ({DATE_AVG}) as daily;"""
+#same for this query
+GLOBAL_AVG = """SELECT AVG(average), COUNT(date) FROM (SELECT AVG(temperature) as average, DATE(date) FROM temperatures GROUP BY DATE(date)) as daily"""
 
 
 url = os.environ.get('DATABASE_URL')
