@@ -16,7 +16,7 @@ INSERT_TEMP = (
 
 ROOM_NAME = """SELECT name FROM rooms WHERE id=(%s)"""
 
-ROOM_NUMBER_OF_DAYS = """SELECT DISTINCT COUNT(DATE(date)) OVER () AS days FROM temperatures WHERE room_id = (%s) GROUP BY DATE(date);"""
+ROOM_NUMBER_OF_DAYS = """SELECT COUNT(DISTINCT DATE(date)) AS days FROM temperatures WHERE room_id = (%s);"""
 ROOM_ALL_TIME_AVG = (
     """SELECT AVG(temperature) as average FROM temperatures WHERE room_id = (%s);"""
 )
@@ -30,7 +30,9 @@ GROUP BY reading_date
 HAVING DATE(temperatures.date) > (SELECT MAX(DATE(temperatures.date))-(%s) FROM temperatures);"""
 
 # same for this query
-GLOBAL_NUMBER_OF_DAYS = """SELECT DISTINCT COUNT(DATE(date)) OVER () AS days FROM temperatures GROUP BY DATE(date);"""
+GLOBAL_NUMBER_OF_DAYS = (
+    """SELECT COUNT(DISTINCT DATE(date)) AS days FROM temperatures;"""
+)
 GLOBAL_AVG = """SELECT AVG(temperature) as average FROM temperatures;"""
 
 
