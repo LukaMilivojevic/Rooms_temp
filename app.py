@@ -12,10 +12,8 @@ INSERT_TEMP = "INSERT INTO temperatures (room_id, temperature, date) VALUES (%s,
 
 ROOM_NAME = """SELECT name FROM rooms WHERE id=(%s)"""
 
-# this query can be separated in 2 queries. one taking the average for all temperatures and other one counting
-# number of days separately
-ROOM_ALL_TIME_AVG = """SELECT AVG(average), COUNT(date) FROM
-(SELECT AVG(temperature) as average, DATE(date) FROM temperatures WHERE room_id = (%s) GROUP BY DATE(date)) as daily"""
+ROOM_NUMBER_OF_DAYS = """SELECT DISTINCT COUNT(DATE(date)) OVER () AS days FROM temperatures WHERE room_id = (%s) GROUP BY DATE(date);"""
+ROOM_ALL_TIME_AVG = """SELECT AVG(temperature) as average FROM temperatures WHERE room_id = (%s);"""
 
 
 ROOM_TERM = """SELECT DATE(temperatures.date) as reading_date,
@@ -26,7 +24,9 @@ GROUP BY reading_date
 HAVING DATE(temperatures.date) > (SELECT MAX(DATE(temperatures.date))-(%s) FROM temperatures);"""
 
 #same for this query
-GLOBAL_AVG = """SELECT AVG(average), COUNT(date) FROM (SELECT AVG(temperature) as average, DATE(date) FROM temperatures GROUP BY DATE(date)) as daily"""
+GLOBAL_NUMBER_OF_DAYS = """SELECT DISTINCT COUNT(DATE(date)) OVER () AS days FROM temperatures GROUP BY DATE(date);"""
+GLOBAL_AVG = """SELECT AVG(temperature) as average FROM temperatures;"""
+
 
 
 url = os.environ.get('DATABASE_URL')
@@ -81,6 +81,52 @@ def get_room_all(room_id):
                 cursor.execute(ROOM_NAME, (room_id,))
                 name = cursor.fetchone()
                 cursor.execute(ROOM_ALL_TIME_AVG, (room_id,))
+                average = cursor.fetchone()[0]
+                cursor.execute(ROOM_NUMBER_OF_DAYS, (room_id,))
+                days = cursor.fetchone()
+        return {"name": name, "average": round(average,2), "days": days}
+
+
+def get_room_term(room_id, term):
+    terms = {"week": 7, "month": 30}
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute(ROOM_NAME, (room_id,))
+            name = cursor.fetchone()
+            cursor.execute(ROOM_TERM, (room_id,terms[term]))
+            dates_temperatures = cursor.fetchall()
+    average = sum(day[1] for day in dates_temperatures)/len(dates_temperatures) 
+    return {"name": name, "temperatures": dates_temperatures, "average": round(average,2)}
+
+
+@app.route('/api/average')
+def get_global_avg():
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute(GLOBAL_AVG)
+            average = cursor.fetchone()[0]
+            cursor.execute(GLOBAL_NUMBER_OF_DAYS)
+            days = cursor.fetchone()
+    return {"average": round(average, 2), "days": days}
+
+"""
+ROOM_ALL_TIME_AVG = SELECT AVG(average), COUNT(date) FROM
+(SELECT AVG(temperature) as average, DATE(date) FROM temperatures WHERE room_id = (%s) GROUP BY DATE(date)) as daily
+
+GLOBAL_AVG = SELECT AVG(average), COUNT(date) FROM (SELECT AVG(temperature) as average, DATE(date) FROM temperatures GROUP BY DATE(date)) as daily
+
+@app.route('/api/room/<int:room_id>')
+def get_room_all(room_id):
+    args = request.args
+    term = args.get("term")
+    if term is not None:
+        return get_room_term(room_id, term)
+    else:        
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(ROOM_NAME, (room_id,))
+                name = cursor.fetchone()
+                cursor.execute(ROOM_ALL_TIME_AVG, (room_id,))
                 days_temps = cursor.fetchone()
         return {"name": name, "average": round(days_temps[0], 2), "days": days_temps[1]}
 
@@ -104,7 +150,7 @@ def get_global_avg():
             cursor.execute(GLOBAL_AVG)
             row = cursor.fetchone()
     return {"average": round(row[0], 2), "days": row[1]}    
-    
+"""    
 
 if __name__ == "__main__":
   	app.run()
