@@ -18,7 +18,7 @@ ROOM_NAME = """SELECT name FROM rooms WHERE id=(%s)"""
 
 ROOM_NUMBER_OF_DAYS = """SELECT COUNT(DISTINCT DATE(date)) AS days FROM temperatures WHERE room_id = (%s);"""
 ROOM_ALL_TIME_AVG = (
-    """SELECT AVG(temperature) as average FROM temperatures WHERE room_id = (%s);"""
+    "SELECT AVG(temperature) as average FROM temperatures WHERE room_id = (%s);"
 )
 
 
