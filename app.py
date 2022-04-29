@@ -1,5 +1,5 @@
-from flask import Flask,request
-from datetime import date, datetime,timezone
+from flask import Flask, request
+from datetime import datetime, timezone
 import psycopg2
 import os
 
@@ -16,18 +16,17 @@ ROOM_AVG = """SELECT DATE(temperatures.date), rooms.name, AVG(temperatures.tempe
 ROOM_ALL_TIME_AVG = f"""SELECT name, COUNT(date) as number_of_days, AVG(average) as average_temp FROM 
                        ({ROOM_AVG}) as days GROUP BY name;"""
 
-MAX_DATE = """SELECT MAX(DATE(date))-(%s) FROM temperatures"""
-ROOM_TERM = f"""SELECT name, average, date FROM
-                (SELECT DATE(temperatures.date) as date, rooms.name, AVG(temperatures.temperature) as average
-                FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id 
-                GROUP BY DATE(temperatures.date), rooms.name, rooms.id
-                HAVING rooms.id = (%s) AND DATE(temperatures.date) > ({MAX_DATE})) as days;
-            """ 
+ROOM_TERM = """SELECT name, average, date FROM
+(
+    SELECT DATE(temperatures.date) as date,
+    rooms.name,
+    AVG(temperatures.temperature) as average
+    FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id
+    GROUP BY DATE(temperatures.date), rooms.name, rooms.id
+    HAVING rooms.id = (%s) AND DATE(temperatures.date) > (SELECT MAX(DATE(date))-(%s) FROM temperatures)
+) as days;"""
 
-DATE_AVG = """SELECT DATE(temperatures.date), AVG(temperatures.temperature) as average
-              FROM rooms JOIN temperatures ON rooms.id = temperatures.room_id
-              GROUP BY DATE(temperatures.date)"""
-GLOBAL_AVG = f"""SELECT AVG(average), COUNT(date)  FROM ({DATE_AVG}) as daily;"""
+GLOBAL_AVG = """SELECT AVG(temperatures.temperature) FROM temperatures;"""
 
 
 url = os.environ.get('DATABASE_URL')
@@ -70,14 +69,12 @@ def add_temp():
     return {"message": "Temperature added."}
 
 
-@app.route('/api/room/<string:id>')
-def get_room_all(id):
-    room_id = int(id)
-    args = request.args
-    term = args.get("term")
+@app.route('/api/room/<int:room_id>')
+def get_room_all(room_id):
+    term = request.args.get("term")
     if term is not None:
         return get_room_term(room_id, term)
-    else:        
+    else:
         with connection:
             with connection.cursor() as cursor:
                 cursor.execute(ROOM_ALL_TIME_AVG, (room_id,))
@@ -85,16 +82,15 @@ def get_room_all(id):
         return {"name": row[0], "average": round(row[2], 2), "days": row[1]}
 
 
-def get_room_term(id, term):
-    room_id = int(id)
+def get_room_term(room_id, term):
     terms = {"week": 7, "month": 30}
     with connection:
         with connection.cursor() as cursor:
-            cursor.execute(ROOM_TERM, (room_id,terms[term]))
-            row = cursor.fetchall()
-    dates_temperatures = [{"date": element[2], "temperature": round(element[1], 2)} for element in row]
-    average = sum([elem["temperature"] for elem in dates_temperatures])/len(dates_temperatures)
-    return {"name": row[0][0], "temperatures": dates_temperatures, "average": round(average,2)}
+            cursor.execute(ROOM_TERM, (room_id, terms[term]))
+            date_rows = cursor.fetchall()
+    dates_temperatures = [{"date": day[2], "temperature": round(day[1], 2)} for day in date_rows]
+    average = sum([day["temperature"] for day in dates_temperatures]) / len(dates_temperatures)
+    return {"name": date_rows[0][0], "temperatures": dates_temperatures, "average": round(average, 2)}
     
 
 @app.route('/api/average')
