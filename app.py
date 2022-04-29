@@ -40,11 +40,6 @@ connection = psycopg2.connect(url)
 app = Flask(__name__)
 
 
-@app.route("/")
-def home_view():
-    return "<h1>Welcome to rooms temperature control</h1>"
-
-
 # {"name": "Room name"}
 @app.route("/api/room", methods=["POST"])
 def create_room():
